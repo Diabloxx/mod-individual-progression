@@ -335,7 +335,7 @@ enum IppTitles
     CENTURION                = 23,
     CHAMPION                 = 24,
     LIEUTENANT_GENERAL       = 25,
-    GENERAL                  = 26,
+    IPP_GENERAL                  = 26,
     WARLORD                  = 27,
     HIGH_WARLORD             = 28
 };
@@ -353,7 +353,7 @@ IppPvPTitleData const TitleData[14] =
     { KNIGHT_CHAMPION,      CENTURION          },
     { LIEUTENANT_COMMANDER, CHAMPION           },
     { COMMANDER,            LIEUTENANT_GENERAL },
-    { MARSHAL,              GENERAL            },
+    { MARSHAL,              IPP_GENERAL            },
     { FIELD_MARSHAL,        WARLORD            },
     { GRAND_MARSHAL,        HIGH_WARLORD       }
 };
