@@ -17,6 +17,21 @@ private:
 public:
     IndividualPlayerProgression() : PlayerScript("IndividualProgression") { }
 
+    void OnPlayerFirstLogin(Player* player) override
+    {
+        if (!player)
+            return;
+
+        // Ensure new characters inherit the account-wide progression state immediately.
+        uint8 state = sIndividualProgression->GetAccountProgressionState(player);
+        if (state)
+        {
+            sIndividualProgression->ForceUpdateProgressionState(player, static_cast<ProgressionState>(state));
+            sIndividualProgression->UpdateProgressionQuests(player);
+            sIndividualProgression->CheckAdjustments(player);
+        }
+    }
+
     void OnPlayerLogin(Player* player) override
     {
         if (!sIndividualProgression->enabled)
