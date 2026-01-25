@@ -12,7 +12,7 @@ IndividualProgression* IndividualProgression::instance()
     return &instance;
 }
 
-uint8 IndividualProgression::GetLegacyHighestCharacterProgression(uint32 accountId) const
+uint8 IndividualProgression::GetLegacyHighestCharacterProgression(uint32 accountId)
 {
     uint8 progressionLevel = 0;
 

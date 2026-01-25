@@ -397,7 +397,7 @@ public:
     void ForceUpdateProgressionState(Player* player, ProgressionState newState) const;
     uint8 GetAccountProgressionState(Player* player) const;
     void SetAccountProgressionState(Player* player, ProgressionState newState) const;
-    uint8 GetLegacyHighestCharacterProgression(uint32 accountId) const;
+    static uint8 GetLegacyHighestCharacterProgression(uint32 accountId);
     void CheckAdjustments(Player* player) const;
     void AdjustVanillaStats(Player* player) const;
     void AdjustTBCStats(Player* player) const;
