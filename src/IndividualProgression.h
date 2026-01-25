@@ -18,6 +18,7 @@
 #include "AreaDefines.h"
 #include "IWorld.h"
 #include <regex>
+#include <unordered_map>
 
 typedef std::unordered_map<uint32, uint32> questXpMapType;
 
@@ -383,6 +384,7 @@ public:
 
     std::map<uint32, uint8> customProgressionMap;
     questXpMapType questXpMap;
+    mutable std::unordered_map<uint32, uint8> accountProgressionCache;
     float vanillaPowerAdjustment, vanillaHealthAdjustment, tbcPowerAdjustment, tbcHealthAdjustment, vanillaHealingAdjustment, tbcHealingAdjustment;
     bool enabled, questXpFix, enforceGroupRules, fishingFix, simpleConfigOverride, questMoneyAtLevelCap, repeatableVanillaQuestsXp, disableDefaultProgression, earlyDungeonSet2, requireNaxxStrath, doableNaxx40Bosses, DisableRDF, excludeAccounts, excludeAccountsUseDatabase, VanillaPvpTitlesKeepPostVanilla, VanillaPvpTitlesEarnPostVanilla, ExcludedAccountsEarnPvPTitles;
     int progressionLimit, startingProgression, tbcRacesProgressionLevel, deathKnightProgressionLevel, deathKnightStartingProgression, RequiredZulGurubProgression, tbcArenaSeason, wotlkArenaSeason;
@@ -390,9 +392,12 @@ public:
     std::string excludedAccountsRegex;
 
     bool hasPassedProgression(Player* player, ProgressionState state) const;
-    static bool isBeforeProgression(Player* player, ProgressionState state) ;
+    bool isBeforeProgression(Player* player, ProgressionState state) const;
     void UpdateProgressionState(Player* player, ProgressionState newState) const;
-    static void ForceUpdateProgressionState(Player* player, ProgressionState newState);
+    void ForceUpdateProgressionState(Player* player, ProgressionState newState) const;
+    uint8 GetAccountProgressionState(Player* player) const;
+    void SetAccountProgressionState(Player* player, ProgressionState newState) const;
+    uint8 GetLegacyHighestCharacterProgression(uint32 accountId) const;
     void CheckAdjustments(Player* player) const;
     void AdjustVanillaStats(Player* player) const;
     void AdjustTBCStats(Player* player) const;

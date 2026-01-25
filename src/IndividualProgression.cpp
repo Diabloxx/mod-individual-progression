@@ -12,6 +12,97 @@ IndividualProgression* IndividualProgression::instance()
     return &instance;
 }
 
+uint8 IndividualProgression::GetLegacyHighestCharacterProgression(uint32 accountId) const
+{
+    uint8 progressionLevel = 0;
+
+    if (!sWorld->getBoolConfig(CONFIG_PLAYER_SETTINGS_ENABLED))
+        return 0;
+
+    QueryResult result = CharacterDatabase.Query(
+        "SELECT `data` FROM `character_settings` WHERE `source` = 'mod-individual-progression' AND `guid` IN (SELECT `guid` FROM `characters` WHERE `account` = {});",
+        accountId);
+
+    if (result)
+    {
+        do
+        {
+            std::string dataOne;
+            std::stringstream dataString((*result)[0].Get<std::string>());
+            dataString >> dataOne;
+            uint8 resultValue = uint8(atoi(dataOne.c_str()));
+            if (resultValue > progressionLevel)
+            {
+                progressionLevel = resultValue;
+            }
+        } while (result->NextRow());
+    }
+
+    return progressionLevel;
+}
+
+uint8 IndividualProgression::GetAccountProgressionState(Player* player) const
+{
+    if (!player)
+        return 0;
+
+    WorldSession* session = player->GetSession();
+    if (!session)
+        return 0;
+
+    uint32 accountId = session->GetAccountId();
+
+    auto it = accountProgressionCache.find(accountId);
+    if (it != accountProgressionCache.end())
+        return it->second;
+
+    uint8 state = 0;
+    if (QueryResult res = LoginDatabase.Query("SELECT progression_state FROM account_progression WHERE id = {}", accountId))
+    {
+        state = res->Fetch()[0].Get<uint8>();
+    }
+    else
+    {
+        state = GetLegacyHighestCharacterProgression(accountId);
+
+        // Seed account storage from legacy data
+        LoginDatabase.Execute("REPLACE INTO account_progression (id, progression_state) VALUES ({}, {})", accountId, state);
+    }
+
+    accountProgressionCache.emplace(accountId, state);
+
+    // keep character setting in sync for any legacy callers
+    player->UpdatePlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE, state);
+
+    return state;
+}
+
+void IndividualProgression::SetAccountProgressionState(Player* player, ProgressionState newState) const
+{
+    if (!player)
+        return;
+
+    WorldSession* session = player->GetSession();
+    if (!session)
+        return;
+
+    uint32 accountId = session->GetAccountId();
+
+    uint8 current = GetAccountProgressionState(player);
+    if (newState <= current)
+    {
+        // still mirror to character settings to avoid stale data
+        player->UpdatePlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE, current);
+        return;
+    }
+
+    accountProgressionCache[accountId] = newState;
+    LoginDatabase.Execute("REPLACE INTO account_progression (id, progression_state) VALUES ({}, {})", accountId, newState);
+
+    // keep character setting in sync for any other consumers
+    player->UpdatePlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE, newState);
+}
+
 
 bool IndividualProgression::hasPassedProgression(Player* player, ProgressionState state) const
 {
@@ -23,15 +114,15 @@ bool IndividualProgression::hasPassedProgression(Player* player, ProgressionStat
         return false;
 	}
 
-    return player->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value >= state;
+    return GetAccountProgressionState(player) >= state;
 }
 
-bool IndividualProgression::isBeforeProgression(Player* player, ProgressionState state)
+bool IndividualProgression::isBeforeProgression(Player* player, ProgressionState state) const
 {
     if (!state || !player || !player->IsInWorld())
         return false;
-    
-    return player->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value < state;
+
+    return GetAccountProgressionState(player) < state;
 }
 
 void IndividualProgression::UpdateProgressionState(Player* player, ProgressionState newState) const
@@ -44,16 +135,16 @@ void IndividualProgression::UpdateProgressionState(Player* player, ProgressionSt
         return;
 	}
 
-    uint8 currentState = player->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
+    uint8 currentState = GetAccountProgressionState(player);
     if (newState > currentState)
     {
-        player->UpdatePlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE, newState);
+        SetAccountProgressionState(player, newState);
     }
 }
 
-void IndividualProgression::ForceUpdateProgressionState(Player* player, ProgressionState newState)
+void IndividualProgression::ForceUpdateProgressionState(Player* player, ProgressionState newState) const
 {
-    player->UpdatePlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE, newState);
+    SetAccountProgressionState(player, newState);
 }
 
 void IndividualProgression::CheckAdjustments(Player* player) const
@@ -124,27 +215,17 @@ float IndividualProgression::ComputeVanillaAdjustment(uint8 playerLevel, float c
  */
 uint8 IndividualProgression::GetAccountProgression(uint32 accountId)
 {
-    uint8 progressionLevel = 0;
-    if (!sWorld->getBoolConfig(CONFIG_PLAYER_SETTINGS_ENABLED))
-    {
-        return 0; // Prevent crash if player settings are not enabled
-    }
-    QueryResult result = CharacterDatabase.Query("SELECT `data` FROM `character_settings` WHERE `source` = 'mod-individual-progression' AND `guid` IN (SELECT `guid` FROM `characters` WHERE `account` = {});", accountId);
-    if (result)
-    {
-        do
-        {
-            std::string dataOne;
-            std::stringstream dataString((*result)[0].Get<std::string>());
-            dataString>>dataOne;
-            uint8 resultValue = atoi(dataOne.c_str());
-            if (resultValue > progressionLevel)
-            {
-                progressionLevel = resultValue;
-            }
-        } while (result->NextRow());
-    }
-    return progressionLevel;
+    if (!accountId)
+        return 0;
+
+    // Prefer account-level storage
+    if (QueryResult res = LoginDatabase.Query("SELECT progression_state FROM account_progression WHERE id = {}", accountId))
+        return res->Fetch()[0].Get<uint8>();
+
+    // Fallback: compute from characters and seed the account table
+    uint8 highest = GetLegacyHighestCharacterProgression(accountId);
+    LoginDatabase.Execute("REPLACE INTO account_progression (id, progression_state) VALUES ({}, {})", accountId, highest);
+    return highest;
 }
 
 void IndividualProgression::RemovePlayerAchievement(uint16 playerGUID, uint16 achievementId)
@@ -239,7 +320,7 @@ void IndividualProgression::SyncBotsProgressionToLeader(Group* group)
     if (!leader || isExcludedFromProgression(leader))
         return;
 
-    uint8 refProgress = leader->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
+    uint8 refProgress = GetAccountProgressionState(leader);
 
     if (!refProgress)
         return;
@@ -735,7 +816,7 @@ void IndividualProgression::checkIPProgression(Player* killer)
     if (!killer || !killer->IsInWorld())
         return;
     
-    uint8 currentState = killer->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
+    uint8 currentState = GetAccountProgressionState(killer);
 
     if (killer->HasAchieved(HALION_KILL)) // 4815
     {
