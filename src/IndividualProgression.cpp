@@ -52,9 +52,26 @@ uint8 IndividualProgression::GetAccountProgressionState(Player* player) const
 
     uint32 accountId = session->GetAccountId();
 
+    uint8 charState = player->GetPlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE).value;
+
     auto it = accountProgressionCache.find(accountId);
     if (it != accountProgressionCache.end())
-        return it->second;
+    {
+        uint8 cached = it->second;
+        if (charState > cached)
+        {
+            accountProgressionCache[accountId] = charState;
+            LoginDatabase.Execute("REPLACE INTO account_progression (id, progression_state) VALUES ({}, {})", accountId, charState);
+            player->UpdatePlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE, charState);
+            return charState;
+        }
+
+        // keep character setting in sync if cached is higher
+        if (cached > charState)
+            player->UpdatePlayerSetting("mod-individual-progression", SETTING_PROGRESSION_STATE, cached);
+
+        return cached;
+    }
 
     uint8 state = 0;
     if (QueryResult res = LoginDatabase.Query("SELECT progression_state FROM account_progression WHERE id = {}", accountId))
@@ -66,6 +83,13 @@ uint8 IndividualProgression::GetAccountProgressionState(Player* player) const
         state = GetLegacyHighestCharacterProgression(accountId);
 
         // Seed account storage from legacy data
+        LoginDatabase.Execute("REPLACE INTO account_progression (id, progression_state) VALUES ({}, {})", accountId, state);
+    }
+
+    // If this character already has a higher stored progression, promote the account to match
+    if (charState > state)
+    {
+        state = charState;
         LoginDatabase.Execute("REPLACE INTO account_progression (id, progression_state) VALUES ({}, {})", accountId, state);
     }
 
