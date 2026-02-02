@@ -51,23 +51,23 @@ UPDATE `creature_template` SET `ScriptName` = 'npc_ipp_wotlk' WHERE `entry` IN (
 
 UPDATE `creature_template` SET `ScriptName` = 'npc_ipp_wotlk_ulduar' WHERE `entry` IN (34252);
 
-UPDATE `creature_template` SET `ScriptName` = 'npc_ipp_wotlk_totc' WHERE `entry` IN (35498, 35577, 35496, 36208, 35500, 35497, 34244, 28701);
+UPDATE `creature_template` SET `ScriptName` = 'npc_ipp_wotlk_totc' WHERE `entry` IN (35498, 35577, 35496, 36208, 35500, 35497, 34244);
 
--- TODO: Harold Winston (32172) has rings from all patches, so he needs special phasing applied - for now make him require ICC progression
-UPDATE `creature_template` SET `ScriptName` = 'npc_ipp_wotlk_icc' WHERE `entry` IN (37776, 40160, 37780, 32172);
+UPDATE `creature_template` SET `ScriptName` = 'npc_ipp_wotlk_icc' WHERE `entry` IN (37776, 40160, 37780);
 
 -- Phasing the portals to Blasted Lands until TBC is unlocked
 UPDATE `gameobject_template` SET `ScriptName` = 'gobject_ipp_tbc' WHERE `entry` IN (195141, 195142);
 
--- Phasing Eye of the Storm Emissary until TBC
+-- Phasing battlemasters
+UPDATE `creature_template` SET `flags_extra` = 2, `ScriptName` = 'npc_ipp_wotlk' WHERE `entry` IN 
+(15351, 34955, 34988, 34991, 34997, 34998, 35007, 35008, 35017, 35020, 35021, 35023, 35024, 35025, 35598, 35599, 35600, 35602, 35603, 35611);
+UPDATE `creature_template` SET `flags_extra` = 2, `ScriptName` = 'npc_ipp_pre_wotlk' WHERE `entry` IN (347, 2804, 14942, 15007);
+UPDATE `creature_template` SET `flags_extra` = 2, `ScriptName` = 'npc_ipp_tbc'   WHERE `entry` IN (20374, 20381, 20383, 20385, 20386, 20388);
+
+-- Phasing emissaries
 UPDATE `creature_template` SET `ScriptName` = 'npc_ipp_tbc' WHERE `entry` IN (22013, 22015);
+UPDATE `creature_template` SET `ScriptName` = 'npc_ipp_wotlk' WHERE `entry` IN (30566, 30567, 34948, 34949, 34950, 34951);
 UPDATE `gameobject_template` SET `ScriptName` = 'gobject_ipp_tbc' WHERE `entry` IN (185106, 185107);
-
--- Phasing Strand of the Ancients Emissary until WotLK
-UPDATE `creature_template` SET `ScriptName` = 'npc_ipp_wotlk' WHERE `entry` IN (30566, 30567);
-
--- Phasing Isle of Conquest Emissary and banner until WotLK
-UPDATE `creature_template` SET `ScriptName` = 'npc_ipp_wotlk' WHERE `entry` IN (34948, 34949, 34950, 34951);
 UPDATE `gameobject_template` SET `ScriptName` = 'gobject_ipp_wotlk' WHERE `entry` IN (195532, 195533);
 
 -- Phasing Zul'Aman quest npcs until TBC T4.
